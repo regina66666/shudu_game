@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>经典中文数独</title>
+    <style>
+        :root {
+            --bg-color: #f5f7fa;
+            --text-color: #333;
+            --board-bg: #fff;
+            --cell-border: #ccc;
+            --block-border: #333;
+            --selected-bg: #bbdefb;
+            --fixed-text: #000;
+            --input-text: #1976d2;
+            --error-bg: #ffcdd2;
+            --error-text: #d32f2f;
+            --btn-bg: #1976d2;
+            --btn-text: #fff;
+            --btn-hover: #1565c0;
+            --pause-overlay: rgba(255, 255, 255, 0.9);
+        }
+
+        body.dark-mode {
+            --bg-color: #121212;
+            --text-color: #e0e0e0;
+            --board-bg: #1e1e1e;
+            --cell-border: #444;
+            --block-border: #888;
+            --selected-bg: #37474f;
+            --fixed-text: #fff;
+            --input-text: #64b5f6;
+            --error-bg: #5c0002;
+            --error-text: #ff8a80;
+            --btn-bg: #333;
+            --btn-text: #e0e0e0;
+            --btn-hover: #444;
+            --pause-overlay: rgba(18, 18, 18, 0.9);
+        }
+
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: var(--bg-color); color: var(--text-color); display: flex; flex-direction: column; align-items: center; margin: 0; padding: 20px; transition: 0.3s; }
+        .header { display: flex; justify-content: space-between; width: 100%; max-width: 450px; align-items: center; margin-bottom: 10px; }
+        .header h1 { margin: 0; font-size: 24px; }
+
+        .controls { display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap; justify-content: center; }
+        select, button { padding: 8px 12px; font-size: 14px; cursor: pointer; border: none; border-radius: 4px; background: var(--btn-bg); color: var(--btn-text); transition: 0.2s; }
+        button:hover { background: var(--btn-hover); }
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        .info-panel { font-size: 18px; font-weight: bold; margin-bottom: 15px; display: flex; gap: 20px; align-items: center;}
+
+        /* 修改了棋盘容器，强制9行9列等分，解决底部挤压问题 */
+        .board-container { position: relative; width: 450px; height: 450px; }
+        @media (max-width: 500px) { .board-container { width: 320px; height: 320px; } }
+
+        .board { display: grid; grid-template-columns: repeat(9, 1fr); grid-template-rows: repeat(9, 1fr); gap: 0; background: var(--block-border); border: 2px solid var(--block-border); width: 100%; height: 100%; box-sizing: border-box; }
+
+        .cell { background: var(--board-bg); display: flex; justify-content: center; align-items: center; font-size: 24px; font-weight: bold; cursor: pointer; color: var(--input-text); border: 1px solid var(--cell-border); user-select: none; box-sizing: border-box; }
+        @media (max-width: 500px) { .cell { font-size: 18px; } }
+
+        /* 粗分割线 */
+        .cell.right-border { border-right: 2px solid var(--block-border); }
+        .cell.bottom-border { border-bottom: 2px solid var(--block-border); }
+
+        .cell.fixed { color: var(--fixed-text); }
+        .cell.selected { background: var(--selected-bg); }
+        .cell.error { background: var(--error-bg); color: var(--error-text); }
+
+        /* 暂停遮罩层，防止暂停时看题 */
+        .pause-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: var(--pause-overlay); display: flex; justify-content: center; align-items: center; font-size: 24px; font-weight: bold; z-index: 10; display: none; }
+        .paused .pause-overlay { display: flex; }
+
+        .actions { margin-top: 15px; display: flex; gap: 10px; }
+
+        .leaderboard { margin-top: 30px; width: 100%; max-width: 450px; background: var(--board-bg); padding: 15px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); box-sizing: border-box;}
+        .leaderboard h2 { margin-top: 0; font-size: 18px; border-bottom: 1px solid var(--cell-border); padding-bottom: 5px; }
+        .record-list { list-style: none; padding: 0; margin: 0; }
+        .record-list li { display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px dashed var(--cell-border); }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>经典数独</h1>
+        <button id="themeToggle">🌓 切换模式</button>
+    </div>
+
+    <div class="controls">
+        <select id="difficulty">
+            <option value="easy">简单</option>
+            <option value="medium" selected>中等</option>
+            <option value="hard">困难</option>
+        </select>
+        <button id="newGameBtn">新对局</button>
+    </div>
+
+    <div class="info-panel">
+        <div>⏱ <span id="timer">00:00</span></div>
+        <button id="pauseBtn">⏸️ 暂停</button>
+    </div>
+
+    <div class="board-container" id="boardContainer">
+        <div class="board" id="board"></div>
+        <div class="pause-overlay">已暂停</div>
+    </div>
+
+    <div class="actions">
+        <button id="checkBtn">✔️ 检查答案</button>
+        <button id="hintBtn">💡 提示</button>
+        <button id="clearBtn">🗑 清空重填</button>
+    </div>
+
+    <div class="leaderboard">
+        <h2>🏆 最佳记录</h2>
+        <ul class="record-list" id="recordList">
+            <li>简单: <span id="record-easy">--:--</span></li>
+            <li>中等: <span id="record-medium">--:--</span></li>
+            <li>困难: <span id="record-hard">--:--</span></li>
+        </ul>
+    </div>
+
+<script>
+    // 核心数据
+    let solution = [];
+    let initialBoard = [];
+    let currentBoard = [];
+    let selectedCell = null;
+    let timerInterval = null;
+    let secondsElapsed = 0;
+    let gameActive = false;
+    let isPaused = false;
+
+    // DOM 元素
+    const boardEl = document.getElementById('board');
+    const boardContainer = document.getElementById('boardContainer');
+    const timerEl = document.getElementById('timer');
+    const difficultySel = document.getElementById('difficulty');
+    const pauseBtn = document.getElementById('pauseBtn');
+    const actionBtns = [document.getElementById('checkBtn'), document.getElementById('hintBtn'), document.getElementById('clearBtn')];
+
+    // 数独生成器算法 (回溯法)
+    function generateSudoku() {
+        const grid = Array.from({length: 9}, () => Array(9).fill(0));
+        fillGrid(grid);
+        solution = grid.map(row => [...row]);
+
+        let blanks = 45;
+        if(difficultySel.value === 'easy') blanks = 30;
+        if(difficultySel.value === 'hard') blanks = 55;
+
+        initialBoard = grid.map(row => [...row]);
+        let count = blanks;
+        while(count > 0) {
+            let r = Math.floor(Math.random() * 9);
+            let c = Math.floor(Math.random() * 9);
+            if(initialBoard[r][c] !== 0) {
+                initialBoard[r][c] = 0;
+                count--;
+            }
+        }
+        currentBoard = initialBoard.map(row => [...row]);
+    }
+
+    function fillGrid(grid) {
+        for (let r = 0; r < 9; r++) {
+            for (let c = 0; c < 9; c++) {
+                if (grid[r][c] === 0) {
+                    const nums = [1,2,3,4,5,6,7,8,9].sort(() => Math.random() - 0.5);
+                    for (let n of nums) {
+                        if (isValid(grid, r, c, n)) {
+                            grid[r][c] = n;
+                            if (fillGrid(grid)) return true;
+                            grid[r][c] = 0;
+                        }
+                    }
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    function isValid(grid, r, c, num) {
+        for (let i = 0; i < 9; i++) {
+            if (grid[r][i] === num || grid[i][c] === num) return false;
+        }
+        let startRow = Math.floor(r / 3) * 3;
+        let startCol = Math.floor(c / 3) * 3;
+        for (let i = 0; i < 3; i++) {
+            for (let j = 0; j < 3; j++) {
+                if (grid[startRow + i][startCol + j] === num) return false;
+            }
+        }
+        return true;
+    }
+
+    // 渲染界面
+    function renderBoard() {
+        boardEl.innerHTML = '';
+        for (let r = 0; r < 9; r++) {
+            for (let c = 0; c < 9; c++) {
+                const cell = document.createElement('div');
+                cell.classList.add('cell');
+                cell.dataset.r = r;
+                cell.dataset.c = c;
+
+                if (c === 2 || c === 5) cell.classList.add('right-border');
+                if (r === 2 || r === 5) cell.classList.add('bottom-border');
+
+                const val = currentBoard[r][c];
+                if (val !== 0) {
+                    cell.textContent = val;
+                    if (initialBoard[r][c] !== 0) cell.classList.add('fixed');
+                }
+
+                if (selectedCell && selectedCell.r === r && selectedCell.c === c) {
+                    cell.classList.add('selected');
+                }
+
+                cell.addEventListener('click', () => {
+                    if(!gameActive || isPaused) return;
+                    selectedCell = {r, c};
+                    renderBoard();
+                });
+
+                boardEl.appendChild(cell);
+            }
+        }
+    }
+
+    // 键盘输入
+    window.addEventListener('keydown', (e) => {
+        if (!gameActive || isPaused || !selectedCell) return;
+        const r = selectedCell.r;
+        const c = selectedCell.c;
+        if (initialBoard[r][c] !== 0) return;
+
+        if (e.key >= '1' && e.key <= '9') {
+            currentBoard[r][c] = parseInt(e.key);
+            clearErrors();
+            renderBoard();
+            checkAutoWin();
+        } else if (e.key === 'Backspace' || e.key === 'Delete') {
+            currentBoard[r][c] = 0;
+            clearErrors();
+            renderBoard();
+        }
+    });
+
+    // 暂停功能
+    pauseBtn.addEventListener('click', () => {
+        if (!gameActive) return;
+        isPaused = !isPaused;
+
+        if (isPaused) {
+            clearInterval(timerInterval);
+            pauseBtn.textContent = '▶️ 继续';
+            boardContainer.classList.add('paused');
+            actionBtns.forEach(btn => btn.disabled = true);
+        } else {
+            startTimer();
+            pauseBtn.textContent = '⏸️ 暂停';
+            boardContainer.classList.remove('paused');
+            actionBtns.forEach(btn => btn.disabled = false);
+        }
+    });
+
+    // 功能按钮
+    document.getElementById('checkBtn').addEventListener('click', () => {
+        if(!gameActive || isPaused) return;
+        clearErrors();
+        let cells = document.querySelectorAll('.cell');
+        cells.forEach(cell => {
+            let r = cell.dataset.r;
+            let c = cell.dataset.c;
+            if (currentBoard[r][c] !== 0 && currentBoard[r][c] !== solution[r][c]) {
+                cell.classList.add('error');
+            }
+        });
+    });
+
+    document.getElementById('hintBtn').addEventListener('click', () => {
+        if (!gameActive || isPaused || !selectedCell) return;
+        const {r, c} = selectedCell;
+        if (initialBoard[r][c] === 0) {
+            currentBoard[r][c] = solution[r][c];
+            clearErrors();
+            renderBoard();
+            checkAutoWin();
+        }
+    });
+
+    document.getElementById('clearBtn').addEventListener('click', () => {
+        if(!gameActive || isPaused) return;
+        currentBoard = initialBoard.map(row => [...row]);
+        clearErrors();
+        renderBoard();
+    });
+
+    function clearErrors() {
+        document.querySelectorAll('.error').forEach(el => el.classList.remove('error'));
+    }
+
+    function checkAutoWin() {
+        for (let r = 0; r < 9; r++) {
+            for (let c = 0; c < 9; c++) {
+                if (currentBoard[r][c] !== solution[r][c]) return;
+            }
+        }
+        gameActive = false;
+        clearInterval(timerInterval);
+        pauseBtn.disabled = true;
+        alert(`恭喜完成！用时：${timerEl.textContent}`);
+        saveRecord();
+    }
+
+    // 计时器与新游戏
+    document.getElementById('newGameBtn').addEventListener('click', startNewGame);
+
+    function startTimer() {
+        clearInterval(timerInterval);
+        timerInterval = setInterval(() => {
+            secondsElapsed++;
+            let m = Math.floor(secondsElapsed / 60).toString().padStart(2, '0');
+            let s = (secondsElapsed % 60).toString().padStart(2, '0');
+            timerEl.textContent = `${m}:${s}`;
+        }, 1000);
+    }
+
+    function startNewGame() {
+        generateSudoku();
+        selectedCell = null;
+        gameActive = true;
+        isPaused = false;
+        secondsElapsed = 0;
+
+        // 重置 UI 状态
+        timerEl.textContent = "00:00";
+        pauseBtn.textContent = '⏸️ 暂停';
+        pauseBtn.disabled = false;
+        boardContainer.classList.remove('paused');
+        actionBtns.forEach(btn => btn.disabled = false);
+
+        startTimer();
+        renderBoard();
+    }
+
+    // 暗色模式
+    const themeToggle = document.getElementById('themeToggle');
+    if(localStorage.getItem('theme') === 'dark') document.body.classList.add('dark-mode');
+
+    themeToggle.addEventListener('click', () => {
+        document.body.classList.toggle('dark-mode');
+        localStorage.setItem('theme', document.body.classList.contains('dark-mode') ? 'dark' : 'light');
+    });
+
+    // 排行榜记录
+    function loadRecords() {
+        ['easy', 'medium', 'hard'].forEach(diff => {
+            let record = localStorage.getItem(`sudoku_record_${diff}`);
+            if(record) {
+                let m = Math.floor(record / 60).toString().padStart(2, '0');
+                let s = (record % 60).toString().padStart(2, '0');
+                document.getElementById(`record-${diff}`).textContent = `${m}:${s}`;
+            }
+        });
+    }
+
+    function saveRecord() {
+        let diff = difficultySel.value;
+        let oldRecord = localStorage.getItem(`sudoku_record_${diff}`);
+        if (!oldRecord || secondsElapsed < parseInt(oldRecord)) {
+            localStorage.setItem(`sudoku_record_${diff}`, secondsElapsed);
+            loadRecords();
+        }
+    }
+
+    // 初始化
+    loadRecords();
+    startNewGame();
+</script>
+</body>
+</html>
