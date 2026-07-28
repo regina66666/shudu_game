@@ -138,7 +138,10 @@
     const difficultySel = document.getElementById('difficulty');
     const pauseBtn = document.getElementById('pauseBtn');
     const actionBtns = [document.getElementById('checkBtn'), document.getElementById('hintBtn'), document.getElementById('clearBtn')];
-
+    difficultySel.addEventListener('change', () => {
+        startNewGame();
+    });
+    
     // ===================== 新增核心：解数量统计（找到第2个解立刻返回，剪枝优化） =====================
     function countSolutions(grid) {
         let board = grid.map(r => [...r]);
