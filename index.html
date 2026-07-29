@@ -14,13 +14,14 @@
             --selected-bg: #bbdefb;
             --fixed-text: #000;
             --input-text: #1976d2;
-            --candidate-text: #666;
+            --candidate-text: #888;
             --error-bg: #ffcdd2;
             --error-text: #d32f2f;
             --btn-bg: #1976d2;
             --btn-text: #fff;
             --btn-hover: #1565c0;
             --pause-overlay: rgba(255, 255, 255, 0.9);
+            --panel-bg: #e3f2fd;
         }
 
         body.dark-mode {
@@ -39,6 +40,7 @@
             --btn-text: #e0e0e0;
             --btn-hover: #444;
             --pause-overlay: rgba(18, 18, 18, 0.9);
+            --panel-bg: #263238;
         }
 
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: var(--bg-color); color: var(--text-color); display: flex; flex-direction: column; align-items: center; margin: 0; padding: 20px; transition: 0.3s; }
@@ -62,12 +64,11 @@
             padding: 10px;
             border: 1px dashed var(--cell-border);
             border-radius: 6px;
+            box-sizing: border-box;
         }
-        .help-tips strong {
-            color: var(--input-text);
-        }
+        .help-tips strong { color: var(--input-text); }
 
-        /* 修改了棋盘容器，强制9行9列等分，解决底部挤压问题 */
+        /* 棋盘容器 */
         .board-container { position: relative; width: 450px; height: 450px; }
         @media (max-width: 500px) { .board-container { width: 320px; height: 320px; } }
 
@@ -79,82 +80,90 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            font-size: 24px;
-            font-weight: bold;
             cursor: pointer;
-            color: var(--input-text);
             border: 1px solid var(--cell-border);
             user-select: none;
             box-sizing: border-box;
             overflow: hidden;
         }
-        @media (max-width: 500px) { .cell { font-size: 18px; } }
-
-        /* 候选数字容器 3*3布局 */
-        .candidate-nums {
-            position: absolute;
-            inset: 0;
-            display: grid;
-            grid-template-columns: repeat(3,1fr);
-            grid-template-rows: repeat(3,1fr);
-            font-size: 10px;
-            color: var(--candidate-text);
-            font-weight: normal;
-        }
-        @media (max-width: 500px) { .candidate-nums { font-size:8px; } }
 
         /* 粗分割线 */
         .cell.right-border { border-right: 2px solid var(--block-border); }
         .cell.bottom-border { border-bottom: 2px solid var(--block-border); }
-
-        .cell.fixed { color: var(--fixed-text); }
         .cell.selected { background: var(--selected-bg); }
-        .cell.error { background: var(--error-bg); color: var(--error-text); }
+        .cell.error { background: var(--error-bg); }
+        .cell.error .main-num { color: var(--error-text); }
 
-        /* 暂停遮罩层，防止暂停时看题 */
+        /* 大数字居中显示 */
+        .main-num {
+            position: absolute;
+            z-index: 2;
+            font-size: 26px;
+            font-weight: bold;
+            color: var(--input-text);
+        }
+        .cell.fixed .main-num { color: var(--fixed-text); }
+        @media (max-width: 500px) { .main-num { font-size: 20px; } }
+
+        /* 候选数字 3*3布局，沉在底层 */
+        .candidate-nums {
+            position: absolute;
+            inset: 2px;
+            display: grid;
+            grid-template-columns: repeat(3,1fr);
+            grid-template-rows: repeat(3,1fr);
+            font-size: 11px;
+            color: var(--candidate-text);
+            z-index: 1;
+            text-align: center;
+            align-items: center;
+        }
+        /* 当有大数字时，让小数字变淡，实现共存互不干扰 */
+        .cell.has-main-num .candidate-nums { opacity: 0.3; }
+        @media (max-width: 500px) { .candidate-nums { font-size:9px; } }
+
+        /* 暂停遮罩层 */
         .pause-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: var(--pause-overlay); display: flex; justify-content: center; align-items: center; font-size: 24px; font-weight: bold; z-index: 10; display: none; }
         .paused .pause-overlay { display: flex; }
 
-        .actions { margin-top: 15px; display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+        /* 独立候选笔记面板 */
+        .candidate-panel {
+            margin-top: 15px;
+            width: 100%;
+            max-width: 450px;
+            background: var(--panel-bg);
+            padding: 10px;
+            border-radius: 8px;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+        }
+        .candidate-panel-title { font-size: 14px; font-weight: bold; }
+        .c-btn-group { display: flex; gap: 5px; flex-wrap: wrap; justify-content: center;}
+        .c-btn {
+            width: 40px; height: 40px;
+            font-size: 16px; font-weight: bold;
+            border-radius: 4px;
+            background: var(--board-bg);
+            color: var(--text-color);
+            border: 1px solid var(--cell-border);
+        }
+        .c-btn.active { background: var(--btn-bg); color: var(--btn-text); border-color: var(--btn-bg); }
 
+        .actions { margin-top: 15px; display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+        
         .leaderboard { margin-top: 30px; width: 100%; max-width: 450px; background: var(--board-bg); padding: 15px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); box-sizing: border-box;}
         .leaderboard h2 { margin-top: 0; font-size: 18px; border-bottom: 1px solid var(--cell-border); padding-bottom: 5px; }
         .record-list { list-style: none; padding: 0; margin: 0; }
         .record-list li { display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px dashed var(--cell-border); }
-                /* 操作说明面板 */
-        .help-tips {
-            max-width: 450px;
-            width: 100%;
-            font-size: 13px;
-            line-height: 1.6;
-            margin-bottom: 12px;
-            padding: 10px;
-            border: 1px dashed var(--cell-border);
-            border-radius: 6px;
-        }
-        .help-tips strong {
-            color: var(--input-text);
-        }
-        /* 候选小数字 3×3网格布局 */
-        .candidate-nums {
-            position: absolute;
-            inset: 0;
-            display: grid;
-            grid-template-columns: repeat(3,1fr);
-            grid-template-rows: repeat(3,1fr);
-            font-size: 10px;
-            color: var(--candidate-text);
-            font-weight: normal;
-        }
-        @media (max-width: 500px) {
-            .candidate-nums { font-size:8px; }
-        }
     </style>
 </head>
 <body>
 
     <div class="header">
-        <h1>可能是也许是<br>功能最齐全的数独游戏</h1>
+        <h1>经典中文数独</h1>
         <button id="themeToggle">🌓 切换模式</button>
     </div>
 
@@ -170,11 +179,10 @@
     <!-- 操作说明 -->
     <div class="help-tips">
         <div><strong>操作指南：</strong></div>
-        <div>1. 鼠标点击选中空格；</div>
-        <div>2. <strong>正常模式 + 数字1~9</strong>：填入/覆盖确定答案；</div>
-        <div>3. 开启<strong>笔记模式</strong>后按数字：添加/移除候选笔记（怀疑数字）；</div>
-        <div>4. <strong>delete</strong>：清空当前格子正式数字（候选笔记保留）；</div>
-        <div>5. 原始题目数字无法修改。</div>
+        <div>1. <strong>填确定答案：</strong>选中格子，直接按键盘数字 1~9。</div>
+        <div>2. <strong>填候选笔记：</strong>点击下方独立的【候选面板】按钮。</div>
+        <div>3. <strong>删除：</strong>按 Delete/退格键清空大数字（小数字保留）。</div>
+        <div>4. 大数字与候选小数字可同屏共存，互不干扰。</div>
     </div>
 
     <div class="info-panel">
@@ -187,11 +195,26 @@
         <div class="pause-overlay">已暂停</div>
     </div>
 
+    <!-- 独立的候选笔记面板 -->
+    <div class="candidate-panel" id="candidatePanel">
+        <div class="candidate-panel-title">📝 候选笔记面板 (点击增删当前格子的候选数)</div>
+        <div class="c-btn-group">
+            <button class="c-btn" data-val="1">1</button>
+            <button class="c-btn" data-val="2">2</button>
+            <button class="c-btn" data-val="3">3</button>
+            <button class="c-btn" data-val="4">4</button>
+            <button class="c-btn" data-val="5">5</button>
+            <button class="c-btn" data-val="6">6</button>
+            <button class="c-btn" data-val="7">7</button>
+            <button class="c-btn" data-val="8">8</button>
+            <button class="c-btn" data-val="9">9</button>
+        </div>
+    </div>
+
     <div class="actions">
         <button id="checkBtn">✔️ 检查答案</button>
         <button id="hintBtn">💡 提示</button>
         <button id="clearBtn">🗑 清空重填</button>
-        <button id="noteModeBtn">📝 笔记模式：关闭</button>
     </div>
 
     <div class="leaderboard">
@@ -208,14 +231,12 @@
     let solution = [];
     let initialBoard = [];
     let currentBoard = [];
-    // =====新增：候选数字二维数组 candidates[r][c] = [1,3,5]
+    let candidates = []; 
     let selectedCell = null;
     let timerInterval = null;
     let secondsElapsed = 0;
     let gameActive = false;
     let isPaused = false;
-    let candidates = []; // 候选笔记存储
-    let noteMode = false; // 笔记模式开关
 
     // DOM 元素
     const boardEl = document.getElementById('board');
@@ -224,11 +245,7 @@
     const difficultySel = document.getElementById('difficulty');
     const pauseBtn = document.getElementById('pauseBtn');
     const actionBtns = [document.getElementById('checkBtn'), document.getElementById('hintBtn'), document.getElementById('clearBtn')];
-    const noteModeBtn = document.getElementById('noteModeBtn');
-    noteModeBtn.addEventListener('click', () => {
-        noteMode = !noteMode;
-        noteModeBtn.textContent = noteMode ? "📝 笔记模式：开启" : "📝 笔记模式：关闭";
-    });
+    const candidateBtns = document.querySelectorAll('.c-btn');
 
     // 切换难度自动开局
     difficultySel.addEventListener('change', () => {
@@ -239,7 +256,7 @@
     function countSolutions(grid) {
         let board = grid.map(r => [...r]);
         let solutionCount = 0;
-        const MAX_COUNT = 2; // 只要>=2，直接判定多解，不用穷举
+        const MAX_COUNT = 2; 
 
         function backtrack() {
             for(let r=0;r<9;r++){
@@ -263,7 +280,7 @@
         return solutionCount;
     }
 
-    // 数独生成器算法 (回溯法填充终盘)
+    // 数独生成器算法
     function generateSudoku() {
         const grid = Array.from({length: 9}, () => Array(9).fill(0));
         fillGrid(grid);
@@ -291,11 +308,9 @@
         }
 
         currentBoard = initialBoard.map(row => [...row]);
-        // 初始化候选数字，全部为空数组
         candidates = Array.from({length:9}, ()=> Array(9).fill().map(()=>[]));
     }
 
-    // 数组随机打乱
     function shuffleArray(arr) {
         for(let i=arr.length-1;i>0;i--){
             const j = Math.floor(Math.random()*(i+1));
@@ -336,7 +351,7 @@
         return true;
     }
 
-    // 渲染界面（新增候选数字渲染）
+    // 渲染界面
     function renderBoard() {
         boardEl.innerHTML = '';
         for (let r = 0; r < 9; r++) {
@@ -348,21 +363,27 @@
 
                 if (c === 2 || c === 5) cell.classList.add('right-border');
                 if (r === 2 || r === 5) cell.classList.add('bottom-border');
+                if (initialBoard[r][c] !== 0) cell.classList.add('fixed');
 
                 const val = currentBoard[r][c];
+                
+                // 1. 渲染候选小数字 (底层)
+                const candidateWrap = document.createElement('div');
+                candidateWrap.className = 'candidate-nums';
+                for(let n=1;n<=9;n++){
+                    const span = document.createElement('span');
+                    span.textContent = candidates[r][c].includes(n) ? n : "";
+                    candidateWrap.appendChild(span);
+                }
+                cell.appendChild(candidateWrap);
+
+                // 2. 渲染确定的大数字 (顶层)
                 if (val !== 0) {
-                    cell.textContent = val;
-                    if (initialBoard[r][c] !== 0) cell.classList.add('fixed');
-                } else {
-                    // 绘制候选笔记3*3网格
-                    const candidateWrap = document.createElement('div');
-                    candidateWrap.className = 'candidate-nums';
-                    for(let n=1;n<=9;n++){
-                        const span = document.createElement('span');
-                        span.textContent = candidates[r][c].includes(n) ? n : "";
-                        candidateWrap.appendChild(span);
-                    }
-                    cell.appendChild(candidateWrap);
+                    cell.classList.add('has-main-num'); // 给个标记，让小数字变淡
+                    const mainNumWrap = document.createElement('div');
+                    mainNumWrap.className = 'main-num';
+                    mainNumWrap.textContent = val;
+                    cell.appendChild(mainNumWrap);
                 }
 
                 if (selectedCell && selectedCell.r === r && selectedCell.c === c) {
@@ -373,6 +394,7 @@
                     if(!gameActive || isPaused) return;
                     selectedCell = {r, c};
                     renderBoard();
+                    updateCandidatePanel();
                 });
 
                 boardEl.appendChild(cell);
@@ -380,6 +402,42 @@
         }
     }
 
+    // 更新下方独立候选面板的按钮高亮状态
+    function updateCandidatePanel() {
+        candidateBtns.forEach(btn => btn.classList.remove('active'));
+        if(selectedCell) {
+            const {r, c} = selectedCell;
+            const currentCands = candidates[r][c];
+            currentCands.forEach(num => {
+                const btn = document.querySelector(`.c-btn[data-val="${num}"]`);
+                if(btn) btn.classList.add('active');
+            });
+        }
+    }
+
+    // 独立候选面板按钮点击事件 (专门处理候选小数字)
+    candidateBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            if (!gameActive || isPaused || !selectedCell) return;
+            const r = selectedCell.r;
+            const c = selectedCell.c;
+            if (initialBoard[r][c] !== 0) return; // 固定题干不可改
+            
+            const val = parseInt(btn.dataset.val);
+            const list = candidates[r][c];
+            const idx = list.indexOf(val);
+            if (idx > -1) {
+                list.splice(idx, 1);
+            } else {
+                list.push(val);
+                list.sort((a, b) => a - b);
+            }
+            renderBoard();
+            updateCandidatePanel();
+        });
+    });
+
+    // 键盘直接填入大数字
     window.addEventListener('keydown', (e) => {
         if (!gameActive || isPaused || !selectedCell) return;
         const r = selectedCell.r;
@@ -387,30 +445,16 @@
         if (initialBoard[r][c] !== 0) return;
     
         const num = parseInt(e.key);
-        // 数字1~9逻辑
         if (num >= 1 && num <= 9) {
             e.preventDefault();
-            if (noteMode) {
-                // 笔记模式：增删候选数字
-                const list = candidates[r][c];
-                const idx = list.indexOf(num);
-                if (idx > -1) {
-                    list.splice(idx, 1);
-                } else {
-                    list.push(num);
-                    list.sort((a, b) => a - b);
-                }
-            } else {
-                // 正常模式：填入/覆盖正式数字，候选保留
-                currentBoard[r][c] = num;
-            }
+            // 直接覆盖大数字（小数字保留且不影响）
+            currentBoard[r][c] = num;
             clearErrors();
             renderBoard();
-            if (!noteMode) checkAutoWin();
+            checkAutoWin();
         }
-        // 删除正式数字，候选保留，兼容Windows/Mac
-        else if (e.key === 'Delete') {
-            currentBoard[r][c] = 0;
+        else if (e.key === 'Delete' || e.key === 'Backspace') {
+            currentBoard[r][c] = 0; // 只清空大数字
             clearErrors();
             renderBoard();
         }
@@ -426,15 +470,17 @@
             pauseBtn.textContent = '▶️ 继续';
             boardContainer.classList.add('paused');
             actionBtns.forEach(btn => btn.disabled = true);
+            candidateBtns.forEach(btn => btn.disabled = true);
         } else {
             startTimer();
             pauseBtn.textContent = '⏸️ 暂停';
             boardContainer.classList.remove('paused');
             actionBtns.forEach(btn => btn.disabled = false);
+            candidateBtns.forEach(btn => btn.disabled = false);
         }
     });
 
-    // 功能按钮
+    // 检查、提示、清空功能
     document.getElementById('checkBtn').addEventListener('click', () => {
         if(!gameActive || isPaused) return;
         clearErrors();
@@ -453,7 +499,6 @@
         const {r, c} = selectedCell;
         if (initialBoard[r][c] === 0) {
             currentBoard[r][c] = solution[r][c];
-            candidates[r][c] = [];
             clearErrors();
             renderBoard();
             checkAutoWin();
@@ -463,10 +508,10 @@
     document.getElementById('clearBtn').addEventListener('click', () => {
         if(!gameActive || isPaused) return;
         currentBoard = initialBoard.map(row => [...row]);
-        // 重置所有候选笔记
         candidates = Array.from({length:9}, ()=> Array(9).fill().map(()=>[]));
         clearErrors();
         renderBoard();
+        updateCandidatePanel();
     });
 
     function clearErrors() {
@@ -506,15 +551,16 @@
         isPaused = false;
         secondsElapsed = 0;
 
-        // 重置 UI 状态
         timerEl.textContent = "00:00";
         pauseBtn.textContent = '⏸️ 暂停';
         pauseBtn.disabled = false;
         boardContainer.classList.remove('paused');
         actionBtns.forEach(btn => btn.disabled = false);
+        candidateBtns.forEach(btn => btn.disabled = false);
 
         startTimer();
         renderBoard();
+        updateCandidatePanel();
     }
 
     // 暗色模式
