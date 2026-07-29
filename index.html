@@ -151,6 +151,13 @@
             border: 1px solid var(--cell-border);
         }
         .c-btn.active { background: var(--btn-bg); color: var(--btn-text); border-color: var(--btn-bg); }
+        /* 修改暗色模式下候选按钮被选中时的颜色，使其更醒目 */
+        body.dark-mode .c-btn.active {
+            background: #1976d2; /* 亮蓝色背景 */
+            color: #ffffff;      /* 白色字体 */
+            border-color: #1976d2;
+        }
+
 
         .actions { margin-top: 15px; display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
         
