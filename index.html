@@ -22,6 +22,8 @@
             --btn-hover: #1565c0;
             --pause-overlay: rgba(255, 255, 255, 0.9);
             --panel-bg: #e3f2fd;
+            --selected-bg: #90caf9;  /* 选中的那个格子的颜色（稍深） */
+            --highlight-bg: #e3f2fd; /* 同行/同列/同宫的浅色提示 */
         }
 
         body.dark-mode {
@@ -41,6 +43,8 @@
             --btn-hover: #444;
             --pause-overlay: rgba(18, 18, 18, 0.9);
             --panel-bg: #263238;
+            --selected-bg: #455a64;  /* 暗色模式下选中的格子 */
+            --highlight-bg: #263238;
         }
 
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: var(--bg-color); color: var(--text-color); display: flex; flex-direction: column; align-items: center; margin: 0; padding: 20px; transition: 0.3s; }
@@ -170,7 +174,7 @@
 <body>
 
     <div class="header">
-        <h1>可能是 也许是<br>功能最齐全的数独游戏</h1>
+        <h1>可能是也许是世界上<br>功能最齐全的数独游戏</h1>
         <button id="themeToggle">🌓 切换模式</button>
     </div>
 
@@ -397,6 +401,21 @@
                     cell.classList.add('selected');
                 }
 
+                // ================= 新增的高亮判断逻辑 =================
+                if (selectedCell) {
+                    // 如果是当前点击的这一个格子，给深色 selected
+                    if (selectedCell.r === r && selectedCell.c === c) {
+                        cell.classList.add('selected');
+                    } 
+                    // 如果是同行、同列、或同属一个 3x3 九宫格，给浅色 highlight
+                    else if (
+                        selectedCell.r === r || 
+                        selectedCell.c === c || 
+                        (Math.floor(selectedCell.r / 3) === Math.floor(r / 3) && Math.floor(selectedCell.c / 3) === Math.floor(c / 3))
+                    ) {
+                        cell.classList.add('highlight');
+                    }
+                }
                 cell.addEventListener('click', () => {
                     if(!gameActive || isPaused) return;
                     selectedCell = {r, c};
