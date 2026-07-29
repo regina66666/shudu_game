@@ -121,12 +121,40 @@
         .leaderboard h2 { margin-top: 0; font-size: 18px; border-bottom: 1px solid var(--cell-border); padding-bottom: 5px; }
         .record-list { list-style: none; padding: 0; margin: 0; }
         .record-list li { display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px dashed var(--cell-border); }
+                /* 操作说明面板 */
+        .help-tips {
+            max-width: 450px;
+            width: 100%;
+            font-size: 13px;
+            line-height: 1.6;
+            margin-bottom: 12px;
+            padding: 10px;
+            border: 1px dashed var(--cell-border);
+            border-radius: 6px;
+        }
+        .help-tips strong {
+            color: var(--input-text);
+        }
+        /* 候选小数字 3×3网格布局 */
+        .candidate-nums {
+            position: absolute;
+            inset: 0;
+            display: grid;
+            grid-template-columns: repeat(3,1fr);
+            grid-template-rows: repeat(3,1fr);
+            font-size: 10px;
+            color: var(--candidate-text);
+            font-weight: normal;
+        }
+        @media (max-width: 500px) {
+            .candidate-nums { font-size:8px; }
+        }
     </style>
 </head>
 <body>
 
     <div class="header">
-        <h1>经典数独</h1>
+        <h1>可能是也许是功能最齐全的数独游戏</h1>
         <button id="themeToggle">🌓 切换模式</button>
     </div>
 
@@ -139,13 +167,13 @@
         <button id="newGameBtn">新对局</button>
     </div>
 
-    <!-- 新增操作说明区域 -->
+    <!-- 操作说明 -->
     <div class="help-tips">
         <div><strong>操作指南：</strong></div>
         <div>1. 鼠标点击选中空格；</div>
-        <div>2. <strong>直接按数字1~9</strong>：填入确定答案；</div>
-        <div>3. <strong>Alt + 数字1~9</strong>：添加/移除候选笔记（怀疑数字）；</div>
-        <div>4. <strong>Backspace / Delete</strong>：清空当前格子内容（答案+候选笔记）；</div>
+        <div>2. <strong>正常模式 + 数字1~9</strong>：填入/覆盖确定答案；</div>
+        <div>3. 开启<strong>笔记模式</strong>后按数字：添加/移除候选笔记（怀疑数字）；</div>
+        <div>4. <strong>delete</strong>：清空当前格子正式数字（候选笔记保留）；</div>
         <div>5. 原始题目数字无法修改。</div>
     </div>
 
@@ -163,6 +191,7 @@
         <button id="checkBtn">✔️ 检查答案</button>
         <button id="hintBtn">💡 提示</button>
         <button id="clearBtn">🗑 清空重填</button>
+        <button id="noteModeBtn">📝 笔记模式：关闭</button>
     </div>
 
     <div class="leaderboard">
@@ -186,6 +215,8 @@
     let secondsElapsed = 0;
     let gameActive = false;
     let isPaused = false;
+    let candidates = []; // 候选笔记存储
+    let noteMode = false; // 笔记模式开关
 
     // DOM 元素
     const boardEl = document.getElementById('board');
@@ -194,6 +225,11 @@
     const difficultySel = document.getElementById('difficulty');
     const pauseBtn = document.getElementById('pauseBtn');
     const actionBtns = [document.getElementById('checkBtn'), document.getElementById('hintBtn'), document.getElementById('clearBtn')];
+    const noteModeBtn = document.getElementById('noteModeBtn');
+    noteModeBtn.addEventListener('click', () => {
+        noteMode = !noteMode;
+        noteModeBtn.textContent = noteMode ? "📝 笔记模式：开启" : "📝 笔记模式：关闭";
+    });
 
     // 切换难度自动开局
     difficultySel.addEventListener('change', () => {
@@ -319,7 +355,7 @@
                     cell.textContent = val;
                     if (initialBoard[r][c] !== 0) cell.classList.add('fixed');
                 } else {
-                    // 渲染候选笔记 3*3网格
+                    // 绘制候选笔记3*3网格
                     const candidateWrap = document.createElement('div');
                     candidateWrap.className = 'candidate-nums';
                     for(let n=1;n<=9;n++){
@@ -345,45 +381,42 @@
         }
     }
 
-    // 键盘输入【核心改造：区分正式数字 和 Alt候选笔记】
     window.addEventListener('keydown', (e) => {
         if (!gameActive || isPaused || !selectedCell) return;
         const r = selectedCell.r;
         const c = selectedCell.c;
         if (initialBoard[r][c] !== 0) return;
-
+    
         const num = parseInt(e.key);
-        // Alt + 数字：切换候选笔记
-        if(e.altKey && num >=1 && num <=9){
+        // 数字1~9逻辑
+        if (num >= 1 && num <= 9) {
             e.preventDefault();
-            const list = candidates[r][c];
-            const idx = list.indexOf(num);
-            if(idx >=0){
-                list.splice(idx,1);
-            }else{
-                list.push(num);
-                list.sort((a,b)=>a-b);
+            if (noteMode) {
+                // 笔记模式：增删候选数字
+                const list = candidates[r][c];
+                const idx = list.indexOf(num);
+                if (idx > -1) {
+                    list.splice(idx, 1);
+                } else {
+                    list.push(num);
+                    list.sort((a, b) => a - b);
+                }
+            } else {
+                // 正常模式：填入/覆盖正式数字，候选保留
+                currentBoard[r][c] = num;
             }
             clearErrors();
             renderBoard();
-            return;
+            if (!noteMode) checkAutoWin();
         }
-
-        // 普通数字：填入正式答案，填入后清空候选
-        if (num >= 1 && num <= 9 && !e.altKey) {
-            currentBoard[r][c] = num;
-            candidates[r][c] = []; // 填入确定数字，清除候选笔记
-            clearErrors();
-            renderBoard();
-            checkAutoWin();
-        } else if (e.key === 'Backspace' || e.key === 'Delete') {
+        // 删除正式数字，候选保留，兼容Windows/Mac
+        else if (e.key === 'Delete') {
             currentBoard[r][c] = 0;
-            candidates[r][c] = []; // 清空同时删除候选
             clearErrors();
             renderBoard();
         }
     });
-
+    
     // 暂停功能
     pauseBtn.addEventListener('click', () => {
         if (!gameActive) return;
